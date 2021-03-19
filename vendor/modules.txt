@@ -1,0 +1,6 @@
+# github.com/google/uuid v1.2.0
+## explicit
+github.com/google/uuid
+# github.com/gordonklaus/portaudio v0.0.0-20200911161147-bb74aa485641
+## explicit
+github.com/gordonklaus/portaudio
