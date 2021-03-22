@@ -1,0 +1,37 @@
+syntax = "proto3";
+package dvras;
+
+// option go_package = "dvras";
+
+message StartedEvent {
+    DeviceID device_id = 1;
+    Timestamp timestamp = 2;
+    string annotation = 3;
+}
+
+message StoppedEvent {
+    DeviceID device_id = 1;
+    Timestamp timestamp = 2;
+    string annotation =3;
+}
+
+message DatapointAcquiredEvent {
+    DeviceID device_id = 1;
+    Timestamp timestamp = 2;
+    repeated Datapoint data = 3;
+}
+
+message Datapoint {
+    sint32 ch1 = 1;
+    sint32 ch2 = 2;
+    sint32 pps = 3;
+}
+
+message DeviceID {
+    string uuid = 1;
+}
+
+message Timestamp {
+    int64 seconds = 1;
+    int64 nanoseconds = 2;
+}

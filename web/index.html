@@ -1,0 +1,69 @@
+<!DOCTYPE html> 
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>DVRAS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+
+<body>
+  <button type="button" onclick="start()">Start</button>
+  <p id="start_msg"></p>
+  <button type="button" onclick="stop()">Stop</button>
+  <p id="stop_msg"></p>
+  <button type="button" onclick="getState()">Get State</button>
+  <p id="getState_msg"></p>
+  <p id="getState_state"></p>
+
+
+<script>
+function start() {
+  var xhr = new XMLHttpRequest();
+  var url = "/start";
+  xhr.open("POST", url, true);
+  xhr.setRequestHeader("Content-Type", "application/json");
+  xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4 && xhr.status === 200) {
+          var json = JSON.parse(xhr.responseText);
+          console.log(json.message);
+          document.getElementById("start_msg").innerHTML = json.message;
+      }
+  };
+  var data = JSON.stringify({"annotation": "hello"});
+  xhr.send(data);
+}
+function stop() {
+  var xhr = new XMLHttpRequest();
+  var url = "/stop";
+  xhr.open("POST", url, true);
+  xhr.setRequestHeader("Content-Type", "application/json");
+  xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4 && xhr.status === 200) {
+          var json = JSON.parse(xhr.responseText);
+          console.log(json.message);
+          document.getElementById("stop_msg").innerHTML = json.message;
+      }
+  };
+  var data = JSON.stringify({"annotation": "bye"});
+  xhr.send(data);
+}
+function getState() {
+  var xhr = new XMLHttpRequest();
+  var url = "/state";
+  xhr.open("GET", url, true);
+  xhr.setRequestHeader("Content-Type", "application/json");
+  xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4 && xhr.status === 200) {
+          var json = JSON.parse(xhr.responseText);
+          console.log(json.message);
+          document.getElementById("getState_msg").innerHTML = json.message;
+          document.getElementById("getState_state").innerHTML = json.state;
+      }
+  };
+  var data = JSON.stringify({"id": 1});
+  xhr.send(data);
+}
+</script>
+</body>
+</html>
