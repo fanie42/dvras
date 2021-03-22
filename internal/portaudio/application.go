@@ -4,7 +4,7 @@ import (
     "fmt"
     "time"
 
-    dvras "github.com/fanie42/dvras/pkg/acquisition"
+    "github.com/fanie42/dvras"
     pa "github.com/gordonklaus/portaudio"
 )
 
@@ -55,23 +55,32 @@ func New(
 }
 
 func (svc *service) process(in [][]int16) {
-    device, err := svc.repo.Load(svc.config.DeviceID)
-    if err != nil {
-        return
-    }
+    err := fmt.Errorf("init loop")
+    for {
+        device, err := svc.repo.Load(svc.config.DeviceID)
+        if err != nil {
+            fmt.Printf("unable to load device: %v", err)
+            return
+        }
 
-    err = device.AcquireDataPoint(
-        time.Now(),
-        in[0],
-        in[1],
-        make([]int16, len(in[0])),
-    )
-    if err != nil {
-        fmt.Println(err.Error())
-    }
-    fmt.Println(len(in[0]))
+        err = device.AcquireDataPoint(
+            time.Now(),
+            in[0],
+            in[1],
+            make([]int16, len(in[0])),
+        )
+        if err != nil {
+            fmt.Printf("command failed: %v", err)
+            return
+        }
+        fmt.Println(len(in[0]))
 
-    svc.repo.Save(device)
+        // Repeat if command fails with "OutOfSequenceError"
+        err = svc.repo.Save(device)
+        if err != dvras.OutOfSequenceError {
+            break
+        }
+    }
 
     return
 }

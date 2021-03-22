@@ -5,10 +5,10 @@ import (
     "fmt"
     "log"
 
-    "github.com/fanie42/dvras/internal/acquisition/http/rest"
-    "github.com/fanie42/dvras/internal/acquisition/portaudio"
-    "github.com/fanie42/dvras/internal/acquisition/timescaledb"
-    "github.com/fanie42/dvras/pkg/acquisition"
+    "github.com/fanie42/dvras"
+    "github.com/fanie42/dvras/internal/http/rest"
+    "github.com/fanie42/dvras/internal/portaudio"
+    "github.com/fanie42/dvras/internal/timescaledb"
     "github.com/google/uuid"
     pa "github.com/gordonklaus/portaudio"
     "github.com/jackc/pgx/v4/pgxpool"
@@ -34,7 +34,7 @@ func main() {
     app := portaudio.New(
         &portaudio.Config{
             SampleRate: 44100,
-            DeviceID:   acquisition.DeviceID(uuid.New()),
+            DeviceID:   dvras.DeviceID(uuid.New()),
         },
         repository,
     )

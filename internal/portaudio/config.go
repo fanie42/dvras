@@ -1,7 +1,7 @@
 package portaudio
 
 import (
-    dvras "github.com/fanie42/dvras/pkg/acquisition"
+    "github.com/fanie42/dvras"
 )
 
 // Config TODO

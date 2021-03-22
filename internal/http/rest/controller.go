@@ -7,7 +7,7 @@ import (
     "net/http"
     "reflect"
 
-    dvras "github.com/fanie42/dvras/pkg/acquisition"
+    "github.com/fanie42/dvras"
 )
 
 // Controller TODO
