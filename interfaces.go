@@ -10,4 +10,5 @@ type Repository interface {
 type Service interface {
     Start(command *StartCommand) error
     Stop(command *StopCommand) error
+    Close() error
 }

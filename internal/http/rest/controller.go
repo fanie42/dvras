@@ -2,10 +2,8 @@ package rest
 
 import (
     "encoding/json"
-    "fmt"
     "log"
     "net/http"
-    "reflect"
 
     "github.com/fanie42/dvras"
 )
@@ -42,7 +40,6 @@ func (ctrl *Controller) start(
 ) {
     command := dvras.StartCommand{}
     err := json.NewDecoder(r.Body).Decode(&command)
-    fmt.Printf("%v\n", command)
     if err != nil {
         respond(err.Error(), http.StatusBadRequest, w)
         return
@@ -58,55 +55,25 @@ func (ctrl *Controller) start(
     return
 }
 
-// Stop TODO
+// Start TODO
 func (ctrl *Controller) stop(
     w http.ResponseWriter,
     r *http.Request,
 ) {
     command := dvras.StopCommand{}
     err := json.NewDecoder(r.Body).Decode(&command)
-    fmt.Printf("%v\n", command)
     if err != nil {
-        t := reflect.TypeOf(err)
-
-        fmt.Println(err.Error(), t.String())
-
-        response, _ := json.Marshal(
-            map[string]string{
-                "message": err.Error(),
-            },
-        )
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusBadRequest)
-        w.Write(response)
+        respond(err.Error(), http.StatusBadRequest, w)
         return
     }
 
     err = ctrl.app.Stop(&command)
     if err != nil {
-        t := reflect.TypeOf(err)
-
-        fmt.Println(err.Error(), t.String())
-
-        response, _ := json.Marshal(
-            map[string]string{
-                "message": err.Error(),
-            },
-        )
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusConflict)
-        w.Write(response)
+        respond(err.Error(), http.StatusConflict, w)
         return
     }
 
-    response, _ := json.Marshal(map[string]string{
-        "message": "Successfully stopped",
-    })
-
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    w.Write(response)
-
+    respond("Successfully stopped", http.StatusOK, w)
     return
 }
 

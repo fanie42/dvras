@@ -1,60 +1,87 @@
 package inmem
 
-// type eventstore interface {
-//     Save(Aggregate) error
-//     Load(ID) (Aggregate, error)
-// }
+import (
+    "fmt"
+    "sync"
 
-// type eventbus interface {
-//     Publish(Event) error
-//     Subscribe(EventType) <-chan Event
-// }
+    "github.com/fanie42/dvras"
+)
 
-// type repository struct {
-//     store eventstore
-//     bus   eventbus
-// }
+type repository struct {
+    sync.RWMutex
+    events  []dvras.Event
+    devices map[dvras.DeviceID]*Device
+}
 
-// // New TODO
-// func New(
-//     es eventstore,
-//     eb eventbus,
-// ) dvras.Repository {
-//     repo := &repository{
-//         store: es,
-//         bus:   eb,
-//     }
+// New TODO
+func New() dvras.Repository {
+    return &repository{
+        events:  make([]dvras.Event, 0),
+        devices: make(map[dvras.DeviceID]*Device),
+    }
+}
 
-//     return repo
-// }
+// Load TODO
+func (repo *repository) Load(
+    id dvras.DeviceID,
+) (*dvras.Device, error) {
+    repo.RLock()
+    defer repo.RUnlock()
 
-// // Save TODO
-// func (repo *repository) Save(
-//     device *dvras.Device,
-// ) error {
-//     err := repo.store.Save(device)
-//     if err != nil {
-//         return err
-//     }
+    device, ok := repo.devices[id]
+    if !ok {
+        newDevice := dvras.NewDevice(id)
+        device = &Device{
+            id:       newDevice.ID,
+            state:    newDevice.State,
+            sequence: newDevice.Sequence,
+        }
+    }
 
-//     err = repo.bus.Publish(device.Events())
-//     if err != nil {
-//         return err
-//     }
+    return &dvras.Device{
+        ID:       device.id,
+        State:    device.state,
+        Sequence: device.sequence,
+    }, nil
+}
 
-//     return nil
-// }
+// Save TODO
+func (repo *repository) Save(
+    device *dvras.Device,
+) error {
+    repo.Lock()
+    defer repo.Unlock()
 
-// // Load TODO
-// func (repo *repository) Load(
-//     id dvras.DeviceID,
-// ) (*dvras.Device, error) {
-//     aggregate, err := repo.store.Load(id)
-//     if err != nil {
-//         return nil, err
-//     }
+    events := device.Changes()
 
-//     repo.bus.Subscribe
+    oldDevice, ok := repo.devices[device.ID]
+    if !ok {
+        newDevice := &Device{
+            id:       device.ID,
+            state:    device.State,
+            sequence: device.Sequence,
+        }
+        repo.devices[device.ID] = newDevice
+        oldDevice = newDevice
+    }
 
-//     return aggregate, nil
-// }
+    fmt.Printf("old: %v, new: %v\n", oldDevice.sequence, device.Sequence)
+
+    for _, event := range events {
+        repo.events = append(repo.events, events...)
+        repo.devices[device.ID].state = device.State
+        repo.devices[device.ID].sequence = device.Sequence
+    }
+
+    if device.Sequence == oldDevice.sequence+uint64(len(events)) {
+    } else {
+        return dvras.SequenceConflictError{
+            Have: device.Sequence,
+            Want: oldDevice.sequence + uint64(len(events)),
+        }
+    }
+
+    fmt.Printf("old: %v, new: %v\n", oldDevice.sequence, device.Sequence)
+
+    return nil
+}

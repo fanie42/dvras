@@ -55,7 +55,9 @@ func New(
 }
 
 func (svc *service) process(in [][]int16) {
-    err := fmt.Errorf("init loop")
+    // Raise event, but don't have to update the aggregate. It won't change
+    // the sequence either, I think?
+    // err := fmt.Errorf("init loop")
     for {
         device, err := svc.repo.Load(svc.config.DeviceID)
         if err != nil {
@@ -77,9 +79,18 @@ func (svc *service) process(in [][]int16) {
 
         // Repeat if command fails with "OutOfSequenceError"
         err = svc.repo.Save(device)
-        if err != dvras.OutOfSequenceError {
-            break
+        if err != nil {
+            switch err.(type) {
+            case dvras.SequenceConflictError:
+                fmt.Println(err)
+                continue
+            default:
+                fmt.Println("unexpected error in portaudio process callback function")
+                return
+            }
         }
+
+        break
     }
 
     return
@@ -87,17 +98,34 @@ func (svc *service) process(in [][]int16) {
 
 // Start TODO
 func (svc *service) Start(command *dvras.StartCommand) error {
-    device, err := svc.repo.Load(svc.config.DeviceID)
-    if err != nil {
-        return err
+    var device *dvras.Device
+    for {
+        device, err := svc.repo.Load(svc.config.DeviceID) // Aggregate Query
+        if err != nil {
+            return err
+        }
+
+        // device is the aggregate
+        err = device.Start(command.Annotation)
+        if err != nil {
+            return err
+        }
+
+        err = svc.repo.Save(device)
+        if err != nil {
+            switch err.(type) {
+            case dvras.SequenceConflictError:
+                fmt.Println(err)
+                continue
+            default:
+                return err
+            }
+        }
+
+        break
     }
 
-    err = device.Start(command.Annotation)
-    if err != nil {
-        return err
-    }
-
-    err = svc.stream.Start()
+    err := svc.stream.Start()
     if err != nil {
         err2 := device.Stop("unexpected error while trying to start")
         if err2 != nil {
@@ -106,41 +134,45 @@ func (svc *service) Start(command *dvras.StartCommand) error {
         return err
     }
 
-    svc.repo.Save(device)
-
-    // err = svc.repo.Save(svc.device)
-    // if err != nil {
-    //     // don't remove the changes that were made to the device. What will
-    //     // happen if the system reboots when it has a long queue of changes?
-    // }
-
-    return err
+    return nil
 }
 
 // Stop TODO
 func (svc *service) Stop(command *dvras.StopCommand) error {
-    device, err := svc.repo.Load(svc.config.DeviceID)
-    if err != nil {
-        return err
-    }
-
-    err = device.Stop(command.Annotation)
-    if err != nil {
-        return err
-    }
-
-    err = svc.stream.Stop()
-    if err != nil {
-        err2 := device.Start("unexpected error while trying to stop")
-        if err2 != nil {
-            return err2
+    for {
+        device, err := svc.repo.Load(svc.config.DeviceID) // Aggregate Query
+        fmt.Printf("%+v\n", device)
+        if err != nil {
+            return err
         }
+
+        // device is the aggregate - send to handler with command
+        // events saved as part of the updated aggregate
+        err = device.Stop(command.Annotation)
+        if err != nil {
+            return err
+        }
+
+        err = svc.repo.Save(device) // Save events list
+        if err != nil {
+            switch err.(type) {
+            case dvras.SequenceConflictError:
+                fmt.Println(err)
+                continue
+            default:
+                return err
+            }
+        }
+
+        break
+    }
+
+    err := svc.stream.Stop()
+    if err != nil {
         return err
     }
 
-    svc.repo.Save(device)
-
-    return err
+    return nil
 }
 
 // Close TODO

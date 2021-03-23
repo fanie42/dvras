@@ -34,19 +34,19 @@ func (state State) String() string {
 
 // Device TODO
 type Device struct {
-    id       DeviceID
-    state    State
-    sequence uint64
-    // changes  []Event
+    ID       DeviceID
+    State    State
+    Sequence uint64
+    changes  []Event
 }
 
 // NewDevice TODO
-func NewDevice() *Device {
+func NewDevice(id DeviceID) *Device {
     return &Device{
-        id:       DeviceID(uuid.New()),
-        state:    Off,
-        sequence: 0,
-        // changes:  make([]Event, 0),
+        ID:       id,
+        State:    Off,
+        Sequence: 0,
+        changes:  make([]Event, 0),
     }
 }
 
@@ -54,36 +54,38 @@ func NewDevice() *Device {
 func (device *Device) Apply(event Event) {
     switch event.(type) {
     case *StartedEvent:
-        device.state = On
+        device.State = On
+        device.Sequence++
     case *StoppedEvent:
-        device.state = Off
+        device.State = Off
+        device.Sequence++
     case *DatapointAcquiredEvent:
     default:
         fmt.Println("unsupported event")
         return
     }
-    device.sequence++
+    device.changes = append(device.changes, event)
 }
 
 // ID TODO
-func (device *Device) ID() DeviceID {
-    return device.id
-}
+// func (device *Device) ID() DeviceID {
+//     return device.id
+// }
 
-// State TODO
-func (device *Device) State() State {
-    return device.state
-}
+// // State TODO
+// func (device *Device) State() State {
+//     return device.state
+// }
 
-// Sequence TODO
-func (device *Device) Sequence() uint64 {
-    return device.sequence
-}
+// // Sequence TODO
+// func (device *Device) Sequence() uint64 {
+//     return device.sequence
+// }
 
 // Changes TODO
-// func (device *Device) Changes() []Event {
-//     return device.changes
-// }
+func (device *Device) Changes() []Event {
+    return device.changes
+}
 
 // Start TODO
 func (device *Device) Start(
@@ -91,9 +93,9 @@ func (device *Device) Start(
 ) error {
     device.Apply(
         &StartedEvent{
-            ID: uuid.UUID(device.id),
+            id: device.ID,
             // Sequence:   device.sequence,
-            Time:       time.Now(),
+            time:       time.Now(),
             Annotation: annotation,
         },
     )
@@ -107,9 +109,9 @@ func (device *Device) Stop(
 ) error {
     device.Apply(
         &StoppedEvent{
-            ID: uuid.UUID(device.id),
+            id: device.ID,
             // Sequence:   device.Sequence(),
-            Time:       time.Now(),
+            time:       time.Now(),
             Annotation: annotation,
         },
     )
@@ -124,7 +126,7 @@ func (device *Device) AcquireDataPoint(
     ch2 []int16,
     pps []int16,
 ) error {
-    if device.state == Off {
+    if device.State == Off {
         err := device.Start("automatic start")
         if err != nil {
             return err
@@ -132,9 +134,9 @@ func (device *Device) AcquireDataPoint(
     }
     device.Apply(
         &DatapointAcquiredEvent{
-            ID: uuid.UUID(device.id),
+            id: device.ID,
             // Sequence: device.Sequence(),
-            Time:     timestamp,
+            time:     timestamp,
             Channel1: ch1,
             Channel2: ch2,
             PPS:      pps,

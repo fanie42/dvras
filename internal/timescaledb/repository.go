@@ -6,6 +6,7 @@ import (
     "strconv"
 
     "github.com/fanie42/dvras"
+    "github.com/google/uuid"
     "github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -42,11 +43,12 @@ func (repo *repository) Load(
 // Save TODO
 func (repo *repository) Save(
     device *dvras.Device,
-    events []dvras.Event,
 ) error {
+    events := device.Changes()
+
     sql := "BEGIN; " +
-        "IF SELECT 1 FROM devices WHERE id = " + device.ID().String() + " " +
-        "AND seq = " + strconv.Itoa(device.Sequence()) + " " +
+        "IF SELECT 1 FROM devices WHERE id = " + uuid.UUID(device.ID()).String() + " " +
+        "AND seq = " + strconv.FormatUint(device.Sequence(), 10) + " " +
         "INSERT INTO events (id, seq, timestamp, type, data) VALUES "
 
     for i, event := range events {
@@ -54,11 +56,11 @@ func (repo *repository) Save(
             sql += ", "
         }
         sql += fmt.Sprintf("(%v, %v, %v, %v, %v)",
-            event.ID(),
-            event.Sequence(),
-            event.Time(),
+            event.ID,
+            // event.Sequence,
+            event.Time,
             "dvras",
-            event.Data(),
+            event.Data,
         )
     }
 

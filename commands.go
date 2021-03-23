@@ -2,42 +2,56 @@ package dvras
 
 // StartCommand TODO
 type StartCommand struct {
-    DeviceID   UUID
-    Annotation string `json:"annotation"`
+    DeviceID   DeviceID `json:"device_id"`
+    Annotation string   `json:"annotation"`
 }
 
 // Handle TODO
-func (command *StartCommand) Handle(
-    repo Repository,
-) {
-    for {
-        device, err := repo.Load(command.DeviceID)
+// func (command *StartCommand) Handle(
+//     repo Repository,
+// ) error {
+//     for {
+//         device, err := repo.Load(command.DeviceID)
+//         if err != nil {
+//             return err
+//         }
 
-        events := device.Start(command.Annotation)
+//         err := device.Start(command.Annotation)
+//         if err != nil {
+//             return err
+//         }
 
-        // All events need to be persisted atomically.
-    }
-}
+//         err = repo.Save(device, events)
+//         if err != SequenceConflictError {
+//             return err
+//         }
+//     }
+// }
 
 // StopCommand TODO
 type StopCommand struct {
-    // DeviceID   UUID
-    Annotation string `json:"annotation"`
+    DeviceID   DeviceID `json:"device_id"`
+    Annotation string   `json:"annotation"`
 }
 
 // Handle TODO
-func (command *StartCommand) Handle(
-    repo Repository,
-) {
-    for {
-        device, err := repo.Load(command.DeviceID)
+// func (command *StopCommand) Handle(
+//     repo Repository,
+// ) error {
+//     for {
+//         device, err := repo.Load(command.DeviceID)
+//         if err != nil {
+//             return err
+//         }
 
-        events := device.Start(command.Annotation)
+//         events, err := device.Stop(command.Annotation)
+//         if err != nil {
+//             return err
+//         }
 
-        for i, event := range events {
-            device.Apply(event)
-            repo.Save(device)
-        }
-
-    }
-}
+//         err = repo.Save(device, events)
+//         if err != SequenceConflictError {
+//             return err
+//         }
+//     }
+// }
