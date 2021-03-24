@@ -10,6 +10,11 @@ import (
 // DeviceID TODO
 type DeviceID uuid.UUID
 
+// String TODO
+func (id DeviceID) String() string {
+    return uuid.UUID(id).String()
+}
+
 // State TODO
 type State int
 
@@ -40,8 +45,8 @@ type Device struct {
     changes  []Event
 }
 
-// NewDevice TODO
-func NewDevice(id DeviceID) *Device {
+// New TODO -
+func New(id DeviceID) *Device {
     return &Device{
         ID:       id,
         State:    Off,
@@ -50,37 +55,26 @@ func NewDevice(id DeviceID) *Device {
     }
 }
 
-// Apply TODO
-func (device *Device) Apply(event Event) {
+// raise TODO
+func (device *Device) raise(event Event) {
     switch event.(type) {
     case *StartedEvent:
         device.State = On
-        device.Sequence++
     case *StoppedEvent:
         device.State = Off
-        device.Sequence++
     case *DatapointAcquiredEvent:
     default:
         fmt.Println("unsupported event")
         return
     }
     device.changes = append(device.changes, event)
+    device.Sequence++
 }
 
-// ID TODO
-// func (device *Device) ID() DeviceID {
-//     return device.id
-// }
-
-// // State TODO
-// func (device *Device) State() State {
-//     return device.state
-// }
-
-// // Sequence TODO
-// func (device *Device) Sequence() uint64 {
-//     return device.sequence
-// }
+// Empty TODO
+func (device *Device) Empty() {
+    device.changes = []Event{}
+}
 
 // Changes TODO
 func (device *Device) Changes() []Event {
@@ -91,7 +85,11 @@ func (device *Device) Changes() []Event {
 func (device *Device) Start(
     annotation string,
 ) error {
-    device.Apply(
+    if device.State != Off {
+        return fmt.Errorf("unable to start device, device already running")
+    }
+
+    device.raise(
         &StartedEvent{
             id: device.ID,
             // Sequence:   device.sequence,
@@ -107,7 +105,11 @@ func (device *Device) Start(
 func (device *Device) Stop(
     annotation string,
 ) error {
-    device.Apply(
+    if device.State != On {
+        return fmt.Errorf("unable to stop device, device not running")
+    }
+
+    device.raise(
         &StoppedEvent{
             id: device.ID,
             // Sequence:   device.Sequence(),
@@ -126,13 +128,16 @@ func (device *Device) AcquireDataPoint(
     ch2 []int16,
     pps []int16,
 ) error {
-    if device.State == Off {
-        err := device.Start("automatic start")
-        if err != nil {
-            return err
-        }
-    }
-    device.Apply(
+    // if device.State != On {
+    //     err := device.Start("automatic start")
+    //     if err != nil {
+    //         return err
+    //     }
+    // }
+
+    fmt.Printf("%v\n", timestamp)
+
+    device.raise(
         &DatapointAcquiredEvent{
             id: device.ID,
             // Sequence: device.Sequence(),

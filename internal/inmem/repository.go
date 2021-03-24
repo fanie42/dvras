@@ -7,35 +7,36 @@ import (
     "github.com/fanie42/dvras"
 )
 
-type repository struct {
+type gateway struct {
     sync.RWMutex
     events  []dvras.Event
     devices map[dvras.DeviceID]*Device
 }
 
 // New TODO
-func New() dvras.Repository {
-    return &repository{
+func New() dvras.Gateway {
+    return &gateway{
         events:  make([]dvras.Event, 0),
         devices: make(map[dvras.DeviceID]*Device),
     }
 }
 
 // Load TODO
-func (repo *repository) Load(
+func (gw *gateway) Load(
     id dvras.DeviceID,
 ) (*dvras.Device, error) {
-    repo.RLock()
-    defer repo.RUnlock()
+    gw.RLock()
+    defer gw.RUnlock()
 
-    device, ok := repo.devices[id]
+    device, ok := gw.devices[id]
     if !ok {
-        newDevice := dvras.NewDevice(id)
+        newDevice := dvras.New(id)
         device = &Device{
             id:       newDevice.ID,
             state:    newDevice.State,
             sequence: newDevice.Sequence,
         }
+        gw.devices[id] = device
     }
 
     return &dvras.Device{
@@ -46,42 +47,43 @@ func (repo *repository) Load(
 }
 
 // Save TODO
-func (repo *repository) Save(
+func (gw *gateway) Save(
     device *dvras.Device,
 ) error {
-    repo.Lock()
-    defer repo.Unlock()
+    gw.Lock()
+    defer gw.Unlock()
 
     events := device.Changes()
 
-    oldDevice, ok := repo.devices[device.ID]
+    oldDevice, ok := gw.devices[device.ID]
     if !ok {
         newDevice := &Device{
             id:       device.ID,
             state:    device.State,
             sequence: device.Sequence,
         }
-        repo.devices[device.ID] = newDevice
+        gw.devices[device.ID] = newDevice
         oldDevice = newDevice
     }
 
-    fmt.Printf("old: %v, new: %v\n", oldDevice.sequence, device.Sequence)
-
-    for _, event := range events {
-        repo.events = append(repo.events, events...)
-        repo.devices[device.ID].state = device.State
-        repo.devices[device.ID].sequence = device.Sequence
-    }
-
-    if device.Sequence == oldDevice.sequence+uint64(len(events)) {
-    } else {
+    if device.Sequence != oldDevice.sequence+uint64(len(events)) {
+        fmt.Printf(
+            "old: %v ,,, new: %v ,,, events: %d\n",
+            device.Sequence,
+            oldDevice.sequence,
+            len(events),
+        )
         return dvras.SequenceConflictError{
             Have: device.Sequence,
             Want: oldDevice.sequence + uint64(len(events)),
         }
     }
 
-    fmt.Printf("old: %v, new: %v\n", oldDevice.sequence, device.Sequence)
+    gw.events = append(gw.events, events...)
+    gw.devices[device.ID].state = device.State
+    gw.devices[device.ID].sequence = device.Sequence
+
+    device.Empty()
 
     return nil
 }

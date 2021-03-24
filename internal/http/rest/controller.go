@@ -10,12 +10,13 @@ import (
 
 // Controller TODO
 type Controller struct {
-    app dvras.Service
+    // OR - map[command]commandHandlers
+    app dvras.ApplicationService
 }
 
 // New TODO
 func New(
-    application dvras.Service,
+    application dvras.ApplicationService,
 ) *Controller {
     ctrl := &Controller{
         app: application,
@@ -26,7 +27,9 @@ func New(
 
 // Run TODO
 func (ctrl *Controller) Run() {
-    http.Handle("/", http.FileServer(http.Dir("C:/Users/Stephanus/Desktop/sansa/web/")))
+    http.Handle("/", http.FileServer(
+        http.Dir("C:/Users/Stephanus/Desktop/dvras/web/")),
+    )
     http.HandleFunc("/start", ctrl.start)
     http.HandleFunc("/stop", ctrl.stop)
 
@@ -38,14 +41,19 @@ func (ctrl *Controller) start(
     w http.ResponseWriter,
     r *http.Request,
 ) {
-    command := dvras.StartCommand{}
-    err := json.NewDecoder(r.Body).Decode(&command)
+    dto := startDTO{}
+    err := json.NewDecoder(r.Body).Decode(&dto)
     if err != nil {
         respond(err.Error(), http.StatusBadRequest, w)
         return
     }
 
-    err = ctrl.app.Start(&command)
+    command := &dvras.StartCommand{
+        // DeviceID:   dto.deviceID,
+        Annotation: dto.annotation,
+    }
+
+    err = ctrl.app.Start(command)
     if err != nil {
         respond(err.Error(), http.StatusConflict, w)
         return
@@ -60,14 +68,19 @@ func (ctrl *Controller) stop(
     w http.ResponseWriter,
     r *http.Request,
 ) {
-    command := dvras.StopCommand{}
-    err := json.NewDecoder(r.Body).Decode(&command)
+    dto := stopDTO{}
+    err := json.NewDecoder(r.Body).Decode(&dto)
     if err != nil {
         respond(err.Error(), http.StatusBadRequest, w)
         return
     }
 
-    err = ctrl.app.Stop(&command)
+    command := &dvras.StopCommand{
+        // DeviceID:   dto.deviceID,
+        Annotation: dto.annotation,
+    }
+
+    err = ctrl.app.Stop(command)
     if err != nil {
         respond(err.Error(), http.StatusConflict, w)
         return

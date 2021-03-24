@@ -21,7 +21,7 @@ func main() {
     // }
     // defer dbpool.Close()
     // repository := timescaledb.New(dbpool)
-    repository := inmem.New()
+    gateway := inmem.New()
 
     err := pa.Initialize()
     if err != nil {
@@ -34,7 +34,7 @@ func main() {
             SampleRate: 44100,
             DeviceID:   dvras.DeviceID(uuid.New()),
         },
-        repository,
+        gateway,
     )
     defer app.Close()
 

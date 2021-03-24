@@ -8,9 +8,9 @@ import (
     pa "github.com/gordonklaus/portaudio"
 )
 
-type service struct {
+type application struct {
     config *Config
-    repo   dvras.Repository
+    gw     dvras.Gateway
     stream *pa.Stream
     buffer [][]int16
 }
@@ -18,48 +18,41 @@ type service struct {
 // New TODO
 func New(
     config *Config,
-    repository dvras.Repository,
-) dvras.Service {
-    svc := &service{
+    gateway dvras.Gateway,
+) dvras.ApplicationService {
+    app := &application{
         config: config,
-        repo:   repository,
+        gw:     gateway,
         buffer: make([][]int16, 2),
     }
 
-    // device, err := repository.Load(config.DeviceID)
-    // if err != nil {
-    //     device = dvras.NewDevice()
-    //     devices.Save(device)
-
-    //     fmt.Println("could not get device, created a new one")
-    // }
-
-    for i := range svc.buffer {
-        svc.buffer[i] = make([]int16, config.SampleRate)
+    for i := range app.buffer {
+        app.buffer[i] = make([]int16, config.SampleRate)
     }
 
     var err error
-    svc.stream, err = pa.OpenDefaultStream(
+    app.stream, err = pa.OpenDefaultStream(
         2,
         0,
         float64(config.SampleRate),
         44100, // config.SampleRate ? This is 0 in the examples...
-        svc.process,
+        app.process,
     )
     if err != nil {
         fmt.Printf("failed to open portaudio stream: %v", err)
         return nil
     }
 
-    return svc
+    return app
 }
 
-func (svc *service) process(in [][]int16) {
+func (app *application) process(in [][]int16) {
     // Raise event, but don't have to update the aggregate. It won't change
     // the sequence either, I think?
     // err := fmt.Errorf("init loop")
     for {
-        device, err := svc.repo.Load(svc.config.DeviceID)
+        device, err := app.gw.Load(app.config.DeviceID)
+
         if err != nil {
             fmt.Printf("unable to load device: %v", err)
             return
@@ -75,10 +68,9 @@ func (svc *service) process(in [][]int16) {
             fmt.Printf("command failed: %v", err)
             return
         }
-        fmt.Println(len(in[0]))
 
         // Repeat if command fails with "OutOfSequenceError"
-        err = svc.repo.Save(device)
+        err = app.gw.Save(device)
         if err != nil {
             switch err.(type) {
             case dvras.SequenceConflictError:
@@ -96,11 +88,16 @@ func (svc *service) process(in [][]int16) {
     return
 }
 
-// Start TODO
-func (svc *service) Start(command *dvras.StartCommand) error {
+// Start TODO - ok... this is all still event sourced. Maybe it would be better
+// if the ingress software simply publishes or caches new datapoints? There is
+// no validation required for data events to be published, so we don't really
+// need event sourcing!?
+func (app *application) Start(command *dvras.StartCommand) error {
     var device *dvras.Device
+    // This needs to happen every time, so makes sense to somehow abstract this
+    // behaviour. Where to?
     for {
-        device, err := svc.repo.Load(svc.config.DeviceID) // Aggregate Query
+        device, err := app.gw.Load(app.config.DeviceID) // Aggregate Query
         if err != nil {
             return err
         }
@@ -111,13 +108,17 @@ func (svc *service) Start(command *dvras.StartCommand) error {
             return err
         }
 
-        err = svc.repo.Save(device)
+        err = app.gw.Save(device)
         if err != nil {
             switch err.(type) {
             case dvras.SequenceConflictError:
-                fmt.Println(err)
+                // The aggregate is out of date and operation will be retried
+                // with updated aggregate.
+                fmt.Printf("sequence conflict error: %v", err)
                 continue
             default:
+                // Unknown error saving device. Abort and return error, command
+                // fail.
                 return err
             }
         }
@@ -125,7 +126,10 @@ func (svc *service) Start(command *dvras.StartCommand) error {
         break
     }
 
-    err := svc.stream.Start()
+    // Now actually start the stream. If the start of the physical device fails,
+    // We will stop the device automatically with an annotation stating the
+    // reason.
+    err := app.stream.Start()
     if err != nil {
         err2 := device.Stop("unexpected error while trying to start")
         if err2 != nil {
@@ -138,10 +142,9 @@ func (svc *service) Start(command *dvras.StartCommand) error {
 }
 
 // Stop TODO
-func (svc *service) Stop(command *dvras.StopCommand) error {
+func (app *application) Stop(command *dvras.StopCommand) error {
     for {
-        device, err := svc.repo.Load(svc.config.DeviceID) // Aggregate Query
-        fmt.Printf("%+v\n", device)
+        device, err := app.gw.Load(app.config.DeviceID) // Aggregate Query
         if err != nil {
             return err
         }
@@ -153,7 +156,7 @@ func (svc *service) Stop(command *dvras.StopCommand) error {
             return err
         }
 
-        err = svc.repo.Save(device) // Save events list
+        err = app.gw.Save(device) // Save events list
         if err != nil {
             switch err.(type) {
             case dvras.SequenceConflictError:
@@ -167,7 +170,7 @@ func (svc *service) Stop(command *dvras.StopCommand) error {
         break
     }
 
-    err := svc.stream.Stop()
+    err := app.stream.Stop()
     if err != nil {
         return err
     }
@@ -176,6 +179,6 @@ func (svc *service) Stop(command *dvras.StopCommand) error {
 }
 
 // Close TODO
-func (svc *service) Close() error {
-    return svc.stream.Close()
+func (app *application) Close() error {
+    return app.stream.Close()
 }

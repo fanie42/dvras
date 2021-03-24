@@ -1,0 +1,8 @@
+{
+    "device": {
+        "id": "d69375ea-bb50-4540-b9e2-055a7a91b06e"
+    },
+    "portaudio": {
+        "sample_rate": 44100
+    }
+}

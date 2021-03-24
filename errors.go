@@ -13,7 +13,7 @@ type SequenceConflictError struct {
 // Error TODO
 func (err SequenceConflictError) Error() string {
     return fmt.Sprintf(
-        "event sequence conflict: have version %d, but wanted version %d",
+        "event sequence conflict: have version %d, but wanted version %d\n",
         err.Have, err.Want,
     )
 }
