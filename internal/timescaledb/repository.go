@@ -3,84 +3,135 @@ package timescaledb
 import (
     "context"
     "fmt"
-    "strconv"
+    "log"
 
     "github.com/fanie42/dvras"
     "github.com/google/uuid"
     "github.com/jackc/pgx/v4/pgxpool"
 )
 
-type repository struct {
+type gateway struct {
     db *pgxpool.Pool
 }
 
 // New TODO
 func New(
     database *pgxpool.Pool,
-) dvras.Repository {
-    return &repository{
+) dvras.Gateway {
+    gw := &gateway{
         db: database,
     }
+
+    return gw
 }
 
 // Load TODO
-func (repo *repository) Load(
+func (gw *gateway) Load(
     id dvras.DeviceID,
 ) (*dvras.Device, error) {
-    sql := `SELECT * FROM devices WHERE id=$1;`
+    sql := "INSERT INTO devices (id, state, sequence) " +
+        "VALUES ($1, 'off', 0) " +
+        "ON CONFLICT (id) DO NOTHING;"
+    _, err := gw.db.Exec(context.Background(), sql, id)
 
-    row := repo.db.QueryRow(context.Background(), sql, id)
+    sql = "SELECT * FROM devices WHERE id = $1;"
+    row := gw.db.QueryRow(context.Background(), sql, id)
 
-    device := &dvras.Device{}
-    err := row.Scan(device)
+    type result struct {
+        A uuid.UUID
+        B string
+        C uint64
+    }
+
+    var r result
+
+    err = row.Scan(&r.A, &r.B, &r.C)
     if err != nil {
+        fmt.Printf("ERROR: %v\n", err)
         return nil, err
+    }
+
+    device := &dvras.Device{
+        ID:       dvras.DeviceID(r.A),
+        State:    dvras.ParseState(r.B),
+        Sequence: r.C,
     }
 
     return device, nil
 }
 
 // Save TODO
-func (repo *repository) Save(
+func (gw *gateway) Save(
     device *dvras.Device,
 ) error {
     events := device.Changes()
 
-    sql := "BEGIN; " +
-        "IF SELECT 1 FROM devices WHERE id = " + uuid.UUID(device.ID()).String() + " " +
-        "AND seq = " + strconv.FormatUint(device.Sequence(), 10) + " " +
-        "INSERT INTO events (id, seq, timestamp, type, data) VALUES "
+    fmt.Println("starting save")
 
-    for i, event := range events {
-        if i > 1 {
-            sql += ", "
-        }
-        sql += fmt.Sprintf("(%v, %v, %v, %v, %v)",
-            event.ID,
-            // event.Sequence,
-            event.Time,
-            "dvras",
-            event.Data,
-        )
+    ctx := context.Background()
+    tx, err := gw.db.Begin(ctx)
+    if err != nil {
+        log.Fatal(err)
     }
 
-    sql += "; " +
-        "UPDATE devices " +
-        "SET state = $1, sequence = $2 " +
-        "WHERE id = $3; " +
-        "COMMIT;"
-
-    _, err := repo.db.Exec(context.Background(), sql,
-        device.State(),
-        device.Sequence(),
-        device.ID(),
+    // Get the current sequence number of the device
+    row := tx.QueryRow(ctx,
+        "SELECT sequence FROM devices WHERE id = $1;",
+        device.ID,
     )
+    var sequence uint64
+    err = row.Scan(&sequence)
     if err != nil {
-        // return SequenceConflictError
+        err2 := tx.Rollback(ctx)
+        if err2 != nil {
+            log.Fatal(err2)
+        }
         return err
     }
 
-    // event.Apply(device) Device should already be updated at this point.
+    // Check if the sequence is up to date, return error if not
+    if device.Sequence != sequence+uint64(len(events)) {
+        err = tx.Rollback(ctx)
+        if err != nil {
+            log.Fatal(err)
+        }
+        return dvras.SequenceConflictError{}
+    }
+
+    // At this point we know that we can insert the new device state and events
+    tag, err := tx.Exec(ctx,
+        "UPDATE devices SET state = $2, sequence = $3 WHERE id = $1;",
+        device.ID, device.State.String(), device.Sequence,
+    )
+    if err != nil || tag.RowsAffected() < 1 {
+        err2 := tx.Rollback(ctx)
+        if err2 != nil {
+            log.Fatal(err2)
+        }
+        return err
+    }
+
+    // Now for the events
+    for _, event := range events {
+        // At this point we know that we can insert the new device state and events
+        tag, err = tx.Exec(ctx,
+            "INSERT INTO events (device_id, time, data) "+
+                "VALUES ($1, $2, $3);",
+            device.ID, event.Time(), event.JSON(),
+        )
+        if err != nil || tag.RowsAffected() < 1 {
+            err2 := tx.Rollback(ctx)
+            if err2 != nil {
+                log.Fatal(err2)
+            }
+            return err
+        }
+    }
+
+    err = tx.Commit(ctx)
+    if err != nil {
+        log.Fatal(err)
+    }
 
     return nil
 }

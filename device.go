@@ -37,6 +37,18 @@ func (state State) String() string {
     return ""
 }
 
+// ParseState TODO
+func ParseState(s string) State {
+    switch s {
+    case "on":
+        return On
+    case "off":
+        return Off
+    }
+
+    return -1
+}
+
 // Device TODO
 type Device struct {
     ID       DeviceID

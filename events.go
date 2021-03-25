@@ -1,6 +1,7 @@
 package dvras
 
 import (
+    "encoding/json"
     "time"
 
     "github.com/fanie42/dvras/api/protobuf/pb"
@@ -12,6 +13,7 @@ type Event interface {
     ID() DeviceID
     Time() time.Time
     Data() []byte
+    JSON() string
 }
 
 // StartedEvent TODO
@@ -40,6 +42,12 @@ func (event *StartedEvent) Data() []byte {
     return data
 }
 
+// JSON TODO
+func (event *StartedEvent) JSON() string {
+    bytes, _ := json.Marshal(event)
+    return string(bytes)
+}
+
 // StoppedEvent TODO
 type StoppedEvent struct {
     id DeviceID `json:"id"`
@@ -64,6 +72,12 @@ func (event *StoppedEvent) Data() []byte {
         Annotation: event.Annotation,
     })
     return data
+}
+
+// JSON TODO
+func (event *StoppedEvent) JSON() string {
+    bytes, _ := json.Marshal(event)
+    return string(bytes)
 }
 
 // DatapointAcquiredEvent TODO
@@ -112,4 +126,10 @@ func (event *DatapointAcquiredEvent) Data() []byte {
     )
 
     return data
+}
+
+// JSON TODO
+func (event *DatapointAcquiredEvent) JSON() string {
+    bytes, _ := json.Marshal(event)
+    return string(bytes)
 }
