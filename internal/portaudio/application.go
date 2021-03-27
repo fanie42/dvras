@@ -34,3 +34,7 @@ func (app *application) Stop(command *dvras.StopCommand) error {
         return err
     }
 }
+
+func (app *application) callback(buffer [][]int32) {
+
+}
