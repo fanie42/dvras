@@ -1,31 +1,41 @@
 package main
 
 import (
-    "fmt"
+    "log"
 
-    "github.com/fanie42/dvras"
     "github.com/fanie42/dvras/internal/http/rest"
+    "github.com/fanie42/dvras/internal/nats"
+    "github.com/fanie42/dvras/internal/noop"
     "github.com/fanie42/dvras/internal/portaudio"
-    "github.com/google/uuid"
     pa "github.com/gordonklaus/portaudio"
+    natsio "github.com/nats-io/nats.go"
 )
 
 func main() {
+    connection, err := natsio.Connect("nats://172.18.30.100:4222")
+    if err != nil {
+        log.Fatalf("failed to connect to nats server: %v", err)
+    }
+    defer connection.Close()
+
+    publisher := nats.NewPublisher(connection)
+    repository := noop.NewRepository(publisher)
+
     err = pa.Initialize()
     if err != nil {
-        fmt.Printf("failed to initialize portaudio: %v", err)
-        return
+        log.Fatalf("failed to initialize portaudio: %v", err)
     }
     defer pa.Terminate()
-    app := portaudio.New(
-        &portaudio.Config{
-            SampleRate: 44100,
-            DeviceID:   dvras.DeviceID(uuid.New()),
+    application := portaudio.New(
+        &portaudio.Configuration{
+            NSchannel:  0,
+            EWchannel:  1,
+            PPSchannel: 2,
         },
-        gateway,
+        repository,
     )
-    defer app.Close()
+    defer application.Close()
 
-    controller := rest.New(app)
+    controller := rest.New(application)
     controller.Run()
 }

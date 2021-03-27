@@ -1,14 +1,23 @@
 package dvras
 
-// Gateway TODO
-type Gateway interface {
-    Load(DeviceID) (*Device, error)
-    Save(*Device) error
+// Repository TODO
+type Repository interface {
+    Save(*Data) error
 }
 
 // ApplicationService TODO
 type ApplicationService interface {
-    Start(command *StartCommand) error
-    Stop(command *StopCommand) error
+    Start() error
+    Stop() error
     Close() error
+}
+
+// Controller TODO
+type Controller interface {
+    Run()
+}
+
+// Publisher TODO
+type Publisher interface {
+    Publish(Event) error
 }

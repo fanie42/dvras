@@ -2,134 +2,37 @@ package dvras
 
 import (
     "encoding/json"
-    "time"
-
-    "github.com/fanie42/dvras/api/protobuf/pb"
-    "google.golang.org/protobuf/proto"
+    "log"
 )
 
 // Event TODO
 type Event interface {
-    ID() DeviceID
-    Time() time.Time
     Data() []byte
-    JSON() string
 }
 
-// StartedEvent TODO
-type StartedEvent struct {
-    id DeviceID `json:"id"`
-    // Sequence   uint64    `json:"sequence"`
-    time       time.Time `json:"time"`
-    Annotation string    `json:"annotation"`
-}
+// // StartedEvent TODO
+// type StartedEvent struct {
+//     Annotation string
+// }
 
-// ID TODO
-func (event *StartedEvent) ID() DeviceID {
-    return event.id
-}
+// // StoppedEvent TODO
+// type StoppedEvent struct {
+//     Annotation string
+// }
 
-// Time TODO
-func (event *StartedEvent) Time() time.Time {
-    return event.time
-}
-
-// Data TODO
-func (event *StartedEvent) Data() []byte {
-    data, _ := proto.Marshal(&pb.StartedEvent{
-        Annotation: event.Annotation,
-    })
-    return data
-}
-
-// JSON TODO
-func (event *StartedEvent) JSON() string {
-    bytes, _ := json.Marshal(event)
-    return string(bytes)
-}
-
-// StoppedEvent TODO
-type StoppedEvent struct {
-    id DeviceID `json:"id"`
-    // Sequence   uint64    `json:"sequence"`
-    time       time.Time `json:"time"`
-    Annotation string    `json:"annotation"`
-}
-
-// ID TODO
-func (event *StoppedEvent) ID() DeviceID {
-    return event.id
-}
-
-// Time TODO
-func (event *StoppedEvent) Time() time.Time {
-    return event.time
+// AcquiredEvent TODO
+type AcquiredEvent struct {
+    NS  []int32 `json:"ns"`
+    EW  []int32 `json:"ew"`
+    PPS []int32 `json:"pps"`
 }
 
 // Data TODO
-func (event *StoppedEvent) Data() []byte {
-    data, _ := proto.Marshal(&pb.StoppedEvent{
-        Annotation: event.Annotation,
-    })
-    return data
-}
-
-// JSON TODO
-func (event *StoppedEvent) JSON() string {
-    bytes, _ := json.Marshal(event)
-    return string(bytes)
-}
-
-// DatapointAcquiredEvent TODO
-type DatapointAcquiredEvent struct {
-    id DeviceID `json:"id"`
-    // Sequence uint64    `json:"sequence"`
-    time     time.Time `json:"time"`
-    Channel1 []int16   `json:"channel_1"`
-    Channel2 []int16   `json:"channel_2"`
-    PPS      []int16   `json:"pps"`
-}
-
-// ID TODO
-func (event *DatapointAcquiredEvent) ID() DeviceID {
-    return event.id
-}
-
-// Time TODO
-func (event *DatapointAcquiredEvent) Time() time.Time {
-    return event.time
-}
-
-// Data TODO
-func (event *DatapointAcquiredEvent) Data() []byte {
-    ch1 := make([]int32, len(event.Channel1))
-    for i, j := range event.Channel1 {
-        ch1[i] = int32(j)
+func (event *AcquiredEvent) Data() []byte {
+    b, err := json.Marshal(event)
+    if err != nil {
+        log.Printf("failed to marshal event: %v", err)
     }
 
-    ch2 := make([]int32, len(event.Channel2))
-    for i, j := range event.Channel2 {
-        ch2[i] = int32(j)
-    }
-
-    pps := make([]int32, len(event.PPS))
-    for i, j := range event.PPS {
-        pps[i] = int32(j)
-    }
-
-    data, _ := proto.Marshal(
-        &pb.DatapointAcquiredEvent{
-            Ch1: ch1,
-            Ch2: ch2,
-            Pps: pps,
-        },
-    )
-
-    return data
-}
-
-// JSON TODO
-func (event *DatapointAcquiredEvent) JSON() string {
-    bytes, _ := json.Marshal(event)
-    return string(bytes)
+    return b
 }
