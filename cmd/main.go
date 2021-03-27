@@ -1,31 +1,16 @@
 package main
 
 import (
-    "context"
     "fmt"
-    "log"
 
     "github.com/fanie42/dvras"
     "github.com/fanie42/dvras/internal/http/rest"
     "github.com/fanie42/dvras/internal/portaudio"
-    "github.com/fanie42/dvras/internal/timescaledb"
     "github.com/google/uuid"
     pa "github.com/gordonklaus/portaudio"
-    "github.com/jackc/pgx/v4/pgxpool"
 )
 
 func main() {
-    dbpool, err := pgxpool.Connect(
-        context.Background(),
-        "postgres://postgres:admin@172.18.30.100:5432/dvras",
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer dbpool.Close()
-    gateway := timescaledb.New(dbpool)
-    // gateway := inmem.New()
-
     err = pa.Initialize()
     if err != nil {
         fmt.Printf("failed to initialize portaudio: %v", err)
