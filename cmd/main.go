@@ -1,30 +1,18 @@
 package main
 
 import (
-    "context"
     "fmt"
-    "log"
 
     "github.com/fanie42/dvras"
     "github.com/fanie42/dvras/internal/http/rest"
+    "github.com/fanie42/dvras/internal/memory"
     "github.com/fanie42/dvras/internal/portaudio"
-    "github.com/fanie42/dvras/internal/timescaledb"
     "github.com/google/uuid"
     pa "github.com/gordonklaus/portaudio"
-    "github.com/jackc/pgx/v4/pgxpool"
 )
 
 func main() {
-    dbpool, err := pgxpool.Connect(
-        context.Background(),
-        "postgres://postgres:admin@172.18.30.100:5432/dvras",
-    )
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer dbpool.Close()
-    gateway := timescaledb.New(dbpool)
-    // gateway := inmem.New()
+    repository := memory.New()
 
     err = pa.Initialize()
     if err != nil {
@@ -32,15 +20,15 @@ func main() {
         return
     }
     defer pa.Terminate()
-    app := portaudio.New(
+    application := portaudio.New(
         &portaudio.Config{
             SampleRate: 44100,
             DeviceID:   dvras.DeviceID(uuid.New()),
         },
         gateway,
     )
-    defer app.Close()
+    defer application.Close()
 
-    controller := rest.New(app)
+    controller := rest.New(application)
     controller.Run()
 }

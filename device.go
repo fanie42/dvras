@@ -15,19 +15,19 @@ func (id DeviceID) String() string {
     return uuid.UUID(id).String()
 }
 
-// State TODO
-type State int
+// Status TODO
+type Status int
 
 const (
     // On TODO
-    On State = iota
+    On Status = iota
     // Off TODO
     Off
 )
 
 // String TODO
-func (state State) String() string {
-    switch state {
+func (status Status) String() string {
+    switch status {
     case On:
         return "on"
     case Off:
@@ -37,8 +37,8 @@ func (state State) String() string {
     return ""
 }
 
-// ParseState TODO
-func ParseState(s string) State {
+// ParseStatus TODO
+func ParseStatus(s string) Status {
     switch s {
     case "on":
         return On
@@ -51,10 +51,10 @@ func ParseState(s string) State {
 
 // Device TODO
 type Device struct {
-    ID       DeviceID
-    State    State
-    Sequence uint64
-    changes  []Event
+    id      deviceID
+    status  Status
+    version uint64
+    // changes []Event
 }
 
 // New TODO -
@@ -65,6 +65,51 @@ func New(id DeviceID) *Device {
         Sequence: 0,
         changes:  make([]Event, 0),
     }
+}
+
+// Start TODO
+func (device *Device) Start(
+    start func() error,
+    annotation string,
+) Command {
+    command := &startCommand{
+        device:     device,
+        time:       time.Now(),
+        annotation: annotation,
+    }
+
+    return command
+}
+
+// Stop TODO
+func (device *Device) Stop(
+    annotation string,
+) Command {
+    command := &startCommand{
+        device:     device,
+        time:       time.Now(),
+        annotation: annotation,
+    }
+
+    return command
+}
+
+// AcquireData TODO
+func (device *Device) AcquireData(
+    ew []int16,
+    ns []int16,
+    pps []int16,
+) Command {
+    // This should not be a command - it already happened. It's and event.
+    command := &acquireDataCommand{
+        device: device,
+        time:   time.Now(),
+        ew:     ew,
+        ns:     ns,
+        pps:    pps,
+    }
+
+    return command
 }
 
 // raise TODO
@@ -84,81 +129,11 @@ func (device *Device) raise(event Event) {
 }
 
 // Empty TODO
-func (device *Device) Empty() {
-    device.changes = []Event{}
-}
+// func (device *Device) Empty() {
+//     device.changes = []Event{}
+// }
 
-// Changes TODO
-func (device *Device) Changes() []Event {
-    return device.changes
-}
-
-// Start TODO
-func (device *Device) Start(
-    annotation string,
-) error {
-    if device.State != Off {
-        return fmt.Errorf("unable to start device, device already running")
-    }
-
-    device.raise(
-        &StartedEvent{
-            id: device.ID,
-            // Sequence:   device.sequence,
-            time:       time.Now(),
-            Annotation: annotation,
-        },
-    )
-
-    return nil
-}
-
-// Stop TODO
-func (device *Device) Stop(
-    annotation string,
-) error {
-    if device.State != On {
-        return fmt.Errorf("unable to stop device, device not running")
-    }
-
-    device.raise(
-        &StoppedEvent{
-            id: device.ID,
-            // Sequence:   device.Sequence(),
-            time:       time.Now(),
-            Annotation: annotation,
-        },
-    )
-
-    return nil
-}
-
-// AcquireDataPoint TODO
-func (device *Device) AcquireDataPoint(
-    timestamp time.Time,
-    ch1 []int16,
-    ch2 []int16,
-    pps []int16,
-) error {
-    // if device.State != On {
-    //     err := device.Start("automatic start")
-    //     if err != nil {
-    //         return err
-    //     }
-    // }
-
-    fmt.Printf("%v\n", timestamp)
-
-    device.raise(
-        &DatapointAcquiredEvent{
-            id: device.ID,
-            // Sequence: device.Sequence(),
-            time:     timestamp,
-            Channel1: ch1,
-            Channel2: ch2,
-            PPS:      pps,
-        },
-    )
-
-    return nil
-}
+// // Changes TODO
+// func (device *Device) Changes() []Event {
+//     return device.changes
+// }
