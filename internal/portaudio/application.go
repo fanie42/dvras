@@ -12,7 +12,7 @@ type application struct {
     config *Config
     repo   dvras.Repository
     stream *pa.Stream
-    buffer [][]int16
+    buffer []int16
 }
 
 // New TODO
@@ -23,7 +23,7 @@ func New(
     app := &application{
         config: config,
         repo:   repository,
-        buffer: make([][]int16, 2),
+        buffer: []int16{},
     }
 
     for i := range app.buffer {
@@ -80,10 +80,7 @@ func (app *application) Start(
         return err
     }
 
-    command = device.Start(
-        annotation,
-        app.stream.Start,
-    )
+    command = device.Start(annotation, app.stream.Start)
     events, err := command.Execute()
     if err != nil {
         return err

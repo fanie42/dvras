@@ -8,7 +8,6 @@ import (
     "github.com/fanie42/dvras/internal/memory"
     "github.com/fanie42/dvras/internal/portaudio"
     "github.com/google/uuid"
-    pa "github.com/gordonklaus/portaudio"
 )
 
 func main() {
