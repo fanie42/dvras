@@ -18,16 +18,28 @@ type Session struct {
 }
 
 // NewSession TODO
-func NewSession(
-    gateway Gateway,
+func (device *Device) NewSession(
+    sessionGateway SessionGateway,
 ) *Session {
     session := &Session{
-        gateway:  gateway,
+        gateway:  sessionGateway,
         ID:       uuid.NewUUID().String(),
         DeviceID: device.ID,
     }
 
     return session
+}
+
+// Apply TODO
+func (session *Session) Apply(event Event) {
+    switch e := event.(type) {
+    case acquiring.SessionStartedEvent:
+        session.StartedAt = e.Time
+    case acquiring.SessionStoppedEvent:
+        session.StoppedAt = e.Time
+    default:
+        log.Printf("unsupported event type: %v\n")
+    }
 }
 
 // Start TODO
@@ -68,16 +80,4 @@ func (session *Session) Stop(annotation string) ([]Event, error) {
     }
 
     return []Event{event}, nil
-}
-
-// Apply TODO
-func (session *Session) Apply(event Event) {
-    switch e := event.(type) {
-    case acquiring.SessionStartedEvent:
-        session.StartedAt = e.Time
-    case acquiring.SessionStoppedEvent:
-        session.StoppedAt = e.Time
-    default:
-        log.Printf("unsupported event type: %v\n")
-    }
 }

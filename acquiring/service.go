@@ -6,7 +6,7 @@ type Service interface {
     Stop(*StopCommand) error
 }
 
-// SessionGateway TODO - Infrastructure Service
+// SessionGateway TODO - Domain Service
 type SessionGateway interface {
     Start() error
     Stop() error

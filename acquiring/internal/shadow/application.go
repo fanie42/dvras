@@ -1,7 +1,7 @@
 package shadow
 
 import (
-    "github.com/fanie42/dvras/internal/acquiring"
+    "github.com/fanie42/dvras/acquiring"
 )
 
 type application struct {

@@ -4,7 +4,8 @@ import (
     "encoding/json"
     "net/http"
 
-    "github.com/fanie42/dvras/internal/acquiring"
+    "github.com/fanie42/dvras/acquiring"
+    "github.com/gorilla/mux"
 )
 
 type handler struct {

@@ -4,7 +4,7 @@ import (
     "fmt"
     "time"
 
-    "github.com/fanie42/dvras/internal/acquiring"
+    "github.com/fanie42/dvras/acquiring"
     pa "github.com/gordonklaus/portaudio"
 )
 
@@ -31,7 +31,7 @@ func New(
         2, 0,
         float64(44100),
         44100, // config.SampleRate ? 0 in the examples. (maps to default)
-        app.callback,
+        gw.callback,
     )
     if err != nil {
         fmt.Printf("failed to open portaudio stream: %v", err)
@@ -43,36 +43,36 @@ func New(
 
 // Start TODO
 func (gw *gateway) Start(command *acquiring.StartCommand) error {
-    session, err := app.device.NewSession()
+    session, err := gw.device.NewSession()
     if err != nil {
         return err
     }
 
-    events, err := session.Start()
+    events, err := session.Start(command.Annotation)
     if err != nil {
         return err
     }
 
     // Handle the events
-    app.repo.Save(session, events)
+    gw.repo.Save(session, events)
 
     return nil
 }
 
 // Stop TODO
 func (gw *gateway) Stop(command *acquiring.StopCommand) error {
-    session, err := app.repo.GetSessionByID()
+    session, err := gw.repo.GetSessionByID()
     if err != nil {
         return err
     }
 
-    events, err := session.Stop()
+    events, err := session.Stop(command.Annotation)
     if err != nil {
         return err
     }
 
     // Handle the events
-    app.repo.Save(session, events)
+    gw.repo.Save(session, events)
 
     return nil
 }
@@ -83,5 +83,5 @@ func (gw *gateway) callback(in []int16) {
         Samples: in,
     }
 
-    app.dispatch(event)
+    gw.dispatch(event)
 }
